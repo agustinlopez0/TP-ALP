@@ -5,5 +5,5 @@
 
 
 import Text.Parsec
-parse (totParser comm) "" "a = 10;if a > 10 {    t = 50} else {b++};repeat {    a++} until a > 11+3"
+parse (totParser comm) "" "a = 10;if a > 10 {    t = 50} else {b = b++};repeat {    a=12} until a > 11+3"
 parse (totParser comm) "" ""

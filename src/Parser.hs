@@ -181,7 +181,6 @@ commBasic =  skip
 comm :: Parser Comm
 comm = chainl1 commBasic seqOp
 
-
 ------------------------------------
 -- Función de parseo
 ------------------------------------
