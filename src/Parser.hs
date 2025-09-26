@@ -44,6 +44,10 @@ lis = makeTokenParser
 -----------------------------------
 --- Parser de expresiones enteras
 -----------------------------------
+-- ghci> import Text.Parsec
+-- ghci> parse (totParser intexp) "" "42"
+-- Right (Const 42)
+-- ghci> parse (totParser factor) "" "42"
 
 factor :: Parser (Exp Int)
 factor =
@@ -54,7 +58,6 @@ factor =
               return (VarInc v)) -- Revisa var++
   <|> (Var <$> identifier lis) -- Sino solo variable
   <|> (reservedOp lis "-" >> UMinus <$> factor)
-
 
 term :: Parser (Exp Int)
 term = do
@@ -85,20 +88,98 @@ intexp = do
             return (Minus t e))
     <|> return t
 
-
 ------------------------------------
 --- Parser de expresiones booleanas
 ------------------------------------
 
+boolfactor :: Parser (Exp Bool)
+boolfactor =
+      parens lis boolexp -- Si hay parentesis parsea el intexp de adentro
+  <|> (reserved lis "true" >> return BTrue)
+  <|> (reserved lis "false" >> return BFalse)
+  <|> (reservedOp lis "!" >> Not <$> boolexp)
+
+
+boolcomp :: Parser (Exp Bool)
+boolcomp = do
+    t <- intexp
+    rest t
+  where
+    rest t =
+          (do reservedOp lis "=="
+              e <- intexp
+              return (Eq t e))
+      <|> (do reservedOp lis "!="
+              e <- intexp
+              return (NEq t e))
+      <|> (do reservedOp lis "<"
+              e <- intexp
+              return (Lt t e))
+      <|> (do reservedOp lis ">"
+              e <- intexp
+              return (Gt t e))
+
+
 boolexp :: Parser (Exp Bool)
-boolexp = undefined
+boolexp = do
+    b <- (try boolcomp) <|> boolfactor
+    rest b
+  where
+  rest b =
+        (do reservedOp lis "&&"
+            e <- boolexp
+            return (And b e))
+    <|> (do reservedOp lis "||"
+            e <- boolexp
+            return (Or b e))
+    <|> return b
 
 -----------------------------------
 --- Parser de comandos
 -----------------------------------
 
+skip :: Parser Comm
+skip = do 
+    reserved lis "skip"
+    return Skip  
+
+assig :: Parser Comm
+assig = do 
+    v <- identifier lis
+    reservedOp lis "="
+    i <- intexp
+    return (Let v i)
+
+seqOp :: Parser (Comm -> Comm -> Comm)
+seqOp = do
+  reservedOp lis ";"
+  return Seq
+
+ifthenelse :: Parser Comm
+ifthenelse = do
+    reserved lis "if"
+    b <- boolexp
+    c <- braces lis comm
+    reserved lis "else"
+    c' <- braces lis comm
+    return (IfThenElse b c c')
+
+repeatcomm :: Parser Comm
+repeatcomm = do
+    reserved lis "repeat"
+    c <- braces lis comm
+    reserved lis "until"
+    b <- boolexp
+    return (RepeatUntil c b)
+
+commBasic :: Parser Comm
+commBasic =  skip
+         <|> assig
+         <|> ifthenelse
+         <|> repeatcomm
+
 comm :: Parser Comm
-comm = undefined
+comm = chainl1 commBasic seqOp
 
 
 ------------------------------------

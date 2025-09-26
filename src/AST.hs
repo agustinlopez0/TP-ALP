@@ -12,7 +12,7 @@ data Exp a where
   Var    :: Variable -> Exp Int
   UMinus :: Exp Int -> Exp Int
   Plus   :: Exp Int -> Exp Int -> Exp Int
-  VarInc :: Variable -> Exp Int -------------------------------
+  VarInc :: Variable -> Exp Int
   Minus  :: Exp Int -> Exp Int -> Exp Int
   Times  :: Exp Int -> Exp Int -> Exp Int
   Div    :: Exp Int -> Exp Int -> Exp Int
