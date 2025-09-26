@@ -45,14 +45,45 @@ lis = makeTokenParser
 --- Parser de expresiones enteras
 -----------------------------------
 
+factor :: Parser (Exp Int)
+factor =
+      parens lis intexp -- Si hay parentesis parsea el intexp de adentro
+  <|> (Const . fromInteger <$> natural lis) -- Parsea un natural y lo pasa a Int y construye con Cons
+  <|> try (do v <- identifier lis
+              reservedOp lis "++"
+              return (VarInc v)) -- Revisa var++
+  <|> (Var <$> identifier lis) -- Sino solo variable
+  <|> (reservedOp lis "-" >> UMinus <$> factor)
+
+
+term :: Parser (Exp Int)
+term = do
+  f <- factor
+  rest f
+ where
+  rest f =
+        (do reservedOp lis "*"
+            t <- term
+            return (Times f t))
+    <|> (do reservedOp lis "/"
+            t <- term
+            return (Div f t))
+    <|> return f
+
+
 intexp :: Parser (Exp Int)
-intexp = pNat <|> pVar <|> pVarpp <|> pOp <|> pSum <|> pSub <|> pMult <|> pDiv
-
-pNat :: Parser (Exp Int)
-pNat = natural
-
-pVar :: Parser (Exp Int)
-pNat = 
+intexp = do
+  t <- term
+  rest t
+ where
+  rest t =
+        (do reservedOp lis "+"
+            e <- intexp
+            return (Plus t e))
+    <|> (do reservedOp lis "-"
+            e <- intexp
+            return (Minus t e))
+    <|> return t
 
 
 ------------------------------------
