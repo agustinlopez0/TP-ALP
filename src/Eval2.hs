@@ -22,6 +22,7 @@ lookfor :: Variable -> State -> Either Error Int
 lookfor v s = case M.lookup v s of
                 Just n  -> Right n
                 Nothing -> Left UndefVar
+                
 -- Cambia el valor de una variable en un estado
 -- Completar la definición
 update :: Variable -> Int -> State -> State
