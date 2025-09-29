@@ -67,7 +67,9 @@ evalExp (Plus e1 e2) s =
   let (v1 :!: s1) = evalExp e1 s
       (v2 :!: s2) = evalExp e2 s1
   in (v1 + v2 :!: s2)
-evalExp (VarInc v) s = (lookfor v s + 1 :!: s)
+evalExp (VarInc v) s = 
+  let n = lookfor v s + 1
+  in (n :!: update v n s)
 evalExp (Minus e1 e2) s =
   let (v1 :!: s1) = evalExp e1 s
       (v2 :!: s2) = evalExp e2 s1

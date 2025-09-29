@@ -89,7 +89,7 @@ evalExp (Plus e1 e2) s =
 
 evalExp (VarInc v) s =
   case lookfor v s of
-    Right val -> Right (val + 1 :!: s)
+    Right val -> Right (val + 1 :!: update v (val + 1) s)
     Left err  -> Left err
 
 evalExp (Minus e1 e2) s =

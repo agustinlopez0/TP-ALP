@@ -22,7 +22,7 @@ lis = makeTokenParser
     , commentEnd      = "*/"
     , commentLine     = "//"
     , opLetter        = char '='
-    , reservedNames   = ["true", "false", "skip", "if", "else", "repeat", "until"]
+    , reservedNames   = ["true", "false", "skip", "if", "else", "repeat", "until", "case"]
     , reservedOpNames = [ "+"
                         , "-"
                         , "*"
@@ -160,9 +160,10 @@ ifthenelse = do
     reserved lis "if"
     b <- boolexp
     c <- braces lis comm
-    reserved lis "else"
-    c' <- braces lis comm
-    return (IfThenElse b c c')
+    try (do 
+      reserved lis "else"
+      c' <- braces lis comm
+      return (IfThenElse b c c')) <|> return (IfThen b c)
 
 repeatcomm :: Parser Comm
 repeatcomm = do
@@ -172,10 +173,28 @@ repeatcomm = do
     b <- boolexp
     return (RepeatUntil c b)
 
+caseexp :: Parser (Exp Bool, Comm)
+caseexp = do
+    b <- boolexp
+    reserved lis ":"
+    reserved lis "{"
+    c <- comm
+    reserved lis "}"
+    return (b, c)
+
+casecomm :: Parser Comm
+casecomm = do
+    reserved lis "case"
+    reserved lis "{"
+    xs <- many caseexp
+    reserved lis "}"
+    return (Case xs)
+
 commBasic :: Parser Comm
 commBasic =  skip
          <|> assig
          <|> ifthenelse
+         <|> casecomm
          <|> repeatcomm
 
 comm :: Parser Comm
