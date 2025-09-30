@@ -60,33 +60,21 @@ factor =
   <|> (reservedOp lis "-" >> UMinus <$> factor)
 
 term :: Parser (Exp Int)
-term = do
-  f <- factor
-  rest f
- where
-  rest f =
-        (do reservedOp lis "*"
-            t <- term
-            return (Times f t))
-    <|> (do reservedOp lis "/"
-            t <- term
-            return (Div f t))
-    <|> return f
+term = chainl1 factor mulop
 
+mulop :: Parser (Exp Int -> Exp Int -> Exp Int)
+mulop =
+      (reservedOp lis "*" >> return Times)
+  <|> (reservedOp lis "/" >> return Div)
 
 intexp :: Parser (Exp Int)
-intexp = do
-  t <- term
-  rest t
- where
-  rest t =
-        (do reservedOp lis "+"
-            e <- intexp
-            return (Plus t e))
-    <|> (do reservedOp lis "-"
-            e <- intexp
-            return (Minus t e))
-    <|> return t
+intexp = chainl1 term addop
+
+addop :: Parser (Exp Int -> Exp Int -> Exp Int)
+addop =
+      (reservedOp lis "+" >> return Plus)
+  <|> (reservedOp lis "-" >> return Minus)
+
 
 ------------------------------------
 --- Parser de expresiones booleanas
