@@ -19,9 +19,7 @@ initState = (M.empty, "")
 -- Busca el valor de una variable en un estado
 -- Completar la definición
 lookfor :: Variable -> State -> Either Error Int
-lookfor v (s, t) = case M.lookup v s of
-                    Just n  -> Right n
-                    Nothing -> Left UndefVar
+lookfor v (s, _) = maybe (Left UndefVar) Right (M.lookup v s)
 
 -- Cambia el valor de una variable en un estado
 -- Completar la definición
@@ -49,128 +47,62 @@ stepCommStar c    s = do
 -- Completar la definición
 stepComm :: Comm -> State -> Either Error (Pair Comm State)
 stepComm Skip s = Right (Skip :!: s)
-stepComm (Let v e) s =
-  case evalExp e s of
-    Right (n :!:  s') -> Right (Skip :!: update v n s')
-    Left err         -> Left err
+
+stepComm (Let v e) s = do
+  (n :!: s') <- evalExp e s
+  pure (Skip :!: update v n s')
+
 stepComm (Seq Skip c2) s = Right (c2 :!: s)
-stepComm (Seq c1 c2) s =
-  case stepComm c1 s of
-    Right (c1' :!: s') -> Right (Seq c1' c2 :!: s')
-    Left err           -> Left err
-stepComm (IfThenElse b c1 c2) s =
-  case evalExp b s of
-    Right (cond :!: s') -> if cond then Right (c1 :!: s') else Right (c2 :!: s')
-    Left err            -> Left err
+stepComm (Seq c1 c2) s = do
+  (c1' :!: s') <- stepComm c1 s
+  pure (Seq c1' c2 :!: s')
+
+stepComm (IfThenElse b c1 c2) s = do
+  (cond :!: s') <- evalExp b s
+  pure $ if cond then (c1 :!: s') else (c2 :!: s')
+
 stepComm (RepeatUntil c b) s =
   Right (Seq c (IfThenElse b Skip (RepeatUntil c b)) :!: s)
+
+-- Helpers para simplificar evalExp
+binOp :: (a -> b -> c) -> Exp a -> Exp b -> State -> Either Error (Pair c State)
+binOp op e1 e2 s = do
+  (v1 :!: s1) <- evalExp e1 s
+  (v2 :!: s2) <- evalExp e2 s1
+  pure (op v1 v2 :!: s2)
+
+unOp :: (a -> b) -> Exp a -> State -> Either Error (Pair b State)
+unOp op e s = do
+  (v :!: s1) <- evalExp e s
+  pure (op v :!: s1)
 
 -- Evalúa una expresión
 -- Completar la definición
 evalExp :: Exp a -> State -> Either Error (Pair a State)
-evalExp (Const n) s = Right (n :!: s)
-evalExp (Var v) s =
-  case lookfor v s of
-    Right val -> Right (val :!: s)
-    Left err  -> Left err
+evalExp (Const n) s    = Right (n :!: s)
+evalExp (Var v) s      = (:!: s) <$> lookfor v s
+evalExp (UMinus e) s   = unOp negate e s
+evalExp (Plus e1 e2) s = binOp (+) e1 e2 s
+evalExp (Minus e1 e2) s= binOp (-) e1 e2 s
+evalExp (Times e1 e2) s= binOp (*) e1 e2 s
 
-evalExp (UMinus e) s =
-  case evalExp e s of
-    Right (v :!: s1) -> Right ((-v) :!: s1)
-    Left err         -> Left err
+evalExp (Div e1 e2) s = do
+  (v1 :!: s1) <- evalExp e1 s
+  (v2 :!: s2) <- evalExp e2 s1
+  if v2 == 0 then Left DivByZero else Right (div v1 v2 :!: s2)
 
-evalExp (Plus e1 e2) s =
-  case evalExp e1 s of
-    Right (v1 :!: s1) ->
-      case evalExp e2 s1 of
-        Right (v2 :!: s2) -> Right (v1 + v2 :!: s2)
-        Left err          -> Left err
-    Left err -> Left err
+evalExp (VarInc v) s = do
+  val <- lookfor v s
+  let s' = update v (val + 1) s
+  Right (val + 1 :!: s')
 
-evalExp (VarInc v) s =
-  case lookfor v s of
-    Right val -> Right (val + 1 :!: update v (val + 1) s)
-    Left err  -> Left err
-
-evalExp (Minus e1 e2) s =
-  case evalExp e1 s of
-    Right (v1 :!: s1) ->
-      case evalExp e2 s1 of
-        Right (v2 :!: s2) -> Right (v1 - v2 :!: s2)
-        Left err          -> Left err
-    Left err -> Left err
-
-evalExp (Times e1 e2) s =
-  case evalExp e1 s of
-    Right (v1 :!: s1) ->
-      case evalExp e2 s1 of
-        Right (v2 :!: s2) -> Right (v1 * v2 :!: s2)
-        Left err          -> Left err
-    Left err -> Left err
-
-evalExp (Div e1 e2) s =
-  case evalExp e1 s of
-    Right (v1 :!: s1) ->
-      case evalExp e2 s1 of
-        Right (v2 :!: s2) ->
-          if v2 == 0
-            then Left DivByZero
-            else Right (div v1 v2 :!: s2)
-        Left err -> Left err
-    Left err -> Left err
-
-evalExp BTrue s = Right (True :!: s)
+evalExp BTrue  s = Right (True :!: s)
 evalExp BFalse s = Right (False :!: s)
 
-evalExp (Lt e1 e2) s =
-  case evalExp e1 s of
-    Right (v1 :!: s1) ->
-      case evalExp e2 s1 of
-        Right (v2 :!: s2) -> Right (v1 < v2 :!: s2)
-        Left err          -> Left err
-    Left err -> Left err
-
-evalExp (Gt e1 e2) s =
-  case evalExp e1 s of
-    Right (v1 :!: s1) ->
-      case evalExp e2 s1 of
-        Right (v2 :!: s2) -> Right (v1 > v2 :!: s2)
-        Left err          -> Left err
-    Left err -> Left err
-
-evalExp (And e1 e2) s =
-  case evalExp e1 s of
-    Right (v1 :!: s1) ->
-      case evalExp e2 s1 of
-        Right (v2 :!: s2) -> Right (v1 && v2 :!: s2)
-        Left err          -> Left err
-    Left err -> Left err
-
-evalExp (Or e1 e2) s =
-  case evalExp e1 s of
-    Right (v1 :!: s1) ->
-      case evalExp e2 s1 of
-        Right (v2 :!: s2) -> Right ((v1 || v2) :!: s2)
-        Left err          -> Left err
-    Left err -> Left err
-
-evalExp (Not e1) s =
-  case evalExp e1 s of
-    Right (v :!: s1) -> Right (not v :!: s1)
-    Left err         -> Left err
-
-evalExp (Eq e1 e2) s =
-  case evalExp e1 s of
-    Right (v1 :!: s1) ->
-      case evalExp e2 s1 of
-        Right (v2 :!: s2) -> Right (v1 == v2 :!: s2)
-        Left err          -> Left err
-    Left err -> Left err
-
-evalExp (NEq e1 e2) s =
-  case evalExp e1 s of
-    Right (v1 :!: s1) ->
-      case evalExp e2 s1 of
-        Right (v2 :!: s2) -> Right (v1 /= v2 :!: s2)
-        Left err          -> Left err
-    Left err -> Left err
+evalExp (Lt e1 e2) s  = binOp (<) e1 e2 s
+evalExp (Gt e1 e2) s  = binOp (>) e1 e2 s
+evalExp (Eq e1 e2) s  = binOp (==) e1 e2 s
+evalExp (NEq e1 e2) s = binOp (/=) e1 e2 s
+evalExp (And e1 e2) s = binOp (&&) e1 e2 s
+evalExp (Or e1 e2) s  = binOp (||) e1 e2 s
+evalExp (Not e) s     = unOp not e s
