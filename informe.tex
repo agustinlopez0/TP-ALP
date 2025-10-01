@@ -1,0 +1,326 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{amssymb}
+\usepackage{proof} % Para \infer
+
+\usepackage{amsthm}
+
+\newtheorem{proposition}{Proposición}
+\usepackage{adjustbox}
+\usepackage{syntax}
+\usepackage{amsthm}
+\usepackage{amsmath}
+\renewcommand{\syntleft}{}
+\renewcommand{\syntright}{}
+% TikZ y la librería que permite "zigzag"
+\usepackage{tikz}
+\usetikzlibrary{decorations.pathmorphing}
+
+% Comando: \zigzagarrow[<longitud>]  (longitud por defecto 0.95cm)
+\newcommand{\zigzagarrow}[1][0.95cm]{%
+  \mathrel{%
+    \tikz[baseline=-0.6ex]{%
+      \draw[->, line width=0.6pt, decorate,
+            decoration={zigzag,segment length=3.5pt,amplitude=1.1pt}]
+            (0,0) -- (#1,0);
+    }%
+  }%
+}
+
+\begin{document}
+
+\section*{Ejercicio 1}
+\subsection*{Sintaxis abstracta}
+\begin{grammar}
+
+<intexp> ::= <nat> 
+        \alt <var> 
+        \alt <var> \texttt{++} 
+        \alt \texttt{$-_{u}$} <intexp> 
+        \alt <intexp> \texttt{+} <intexp>
+        \alt <intexp> \texttt{$-_{b}$} <intexp>
+        \alt <intexp> $\,\times\,$ <intexp>
+        \alt <intexp> $\,\div\,$ <intexp>
+        %\alt \texttt{(} <intexp> \texttt{)}
+        
+<boolexp> ::= \textbf{\texttt{true}}
+        \alt \textbf{\texttt{false}}
+        \alt <intexp> $\,=\,$ <intexp>
+        \alt <intexp> $\,\neq\,$ <intexp>
+        \alt <intexp> \texttt{\textless} <intexp>
+        \alt <intexp> \texttt{\textgreater} <intexp>
+        \alt <boolexp> \(\land\) <boolexp>
+        \alt <boolexp> \(\lor\) <boolexp>
+        \alt \(\lnot\) <boolexp>
+        %\alt \texttt{(} <boolexp> \texttt{)}
+
+
+<comm> ::= \textbf{\texttt{skip}}
+        \alt <var> \texttt{=} <intexp>
+        \alt <comm> \texttt{;} <comm>
+        %\alt \textbf{\texttt{if}} <boolexp> \textbf{\texttt{then}} <comm> 
+        \alt \textbf{\texttt{if}} <boolexp> \textbf{\texttt{then}} <comm> \textbf{\texttt{else}} <comm> 
+        \alt \textbf{\texttt{repeat}} <comm> \textbf{\texttt{until}} <boolexp>
+        %\alt \textbf{\texttt{case}} <casexp>
+
+
+%<casexp> ::= <boolexp> <comm> <casexp>
+%       \alt $\epsilon$
+\end{grammar}
+
+\subsection*{Sintaxis concreta}
+\begin{grammar}
+
+<digit> ::= \texttt{'0'} \alt \texttt{'1'} \alt \dots \alt \texttt{'9'}
+
+<letter> ::= \texttt{'a'} \alt \dots \alt \texttt{'Z'}
+
+<nat> ::= <digit> \alt <digit> <nat>
+
+<var> ::= <letter> \alt <letter> <var>
+
+<intexp> ::= <nat> 
+        \alt <var> 
+        \alt <var> \texttt{++} 
+        \alt \texttt{'-'} <intexp> 
+        \alt <intexp> \texttt{'+'} <intexp>
+        \alt <intexp> \texttt{'-'} <intexp>
+        \alt <intexp> \texttt{'*'} <intexp>
+        \alt <intexp> \texttt{'/} <intexp>
+        \alt \texttt{'('} <intexp> \texttt{')'}
+        
+<boolexp> ::= \textbf{\texttt{'true'}}
+        \alt \textbf{\texttt{'false'}}
+        \alt <intexp> \texttt{'=='} <intexp>
+        \alt <intexp> \texttt{'!='} <intexp>
+        \alt <intexp> \texttt{'\textless'} <intexp>
+        \alt <intexp> \texttt{'\textgreater'} <intexp>
+        \alt <boolexp> \texttt{'\&\&'} <boolexp>
+        \alt <boolexp> \texttt{'||'} <boolexp>
+        \alt '\(!\)' <boolexp>
+        \alt \texttt{'('} <boolexp> \texttt{')'}
+
+
+<comm> ::= \textbf{\texttt{'skip'}}
+        \alt <var> \texttt{'='} <intexp>
+        \alt <comm> \texttt{';'} <comm>
+        \alt \textbf{\texttt{'if}'} <boolexp> \texttt{'\{'} <comm> \texttt{'\}'} 
+        \alt \textbf{\texttt{'if}'} <boolexp> \texttt{'\{'} <comm> \texttt{'\}'} 
+        \textbf{\texttt{'else'}} \texttt{'\{'} <comm> \texttt{'\}'} 
+        \alt \textbf{\texttt{'repeat'}} \texttt{'\{'} <comm> \texttt{'\}'}  \textbf{\texttt{'until'}} <boolexp>
+        \alt \textbf{\texttt{'case'}} <casexp>
+
+<casexp> ::= <boolexp> \textbf{\texttt{':'}} \texttt{'\{'} <comm> \texttt{'\}'} <casexp>
+       \alt $\epsilon$
+
+\end{grammar}
+
+\section*{Ejercicio 4}
+\begin{adjustbox}{center,max width=\textwidth}
+    \infer[VARINC]
+    {\langle x ++, \sigma \rangle
+    \Downarrow_{exp}
+    \langle n + 1, \sigma \rangle}
+    {\langle x, \sigma \rangle
+    \Downarrow_{exp}
+    \langle n, \sigma \rangle}
+
+    
+\end{adjustbox}
+
+
+\section*{Ejercicio 5}
+
+\begin{proposition}
+La relación de transición es determinista: si $t \to v$ y $t \to v'$ entonces $v = v'$.
+\end{proposition}
+
+\begin{proof}
+Probamos por inducción sobre la derivación $t \to v$, con análisis de casos:
+
+\textbf{Caso ASS:}  
+\[
+t = \langle x = e, \sigma \rangle, \quad v = \langle \textbf{skip}, [\sigma | x : n] \rangle
+\]  
+Como la expresión $e$ es determinista por hipótesis inductiva, la única regla aplicable es \textsc{ASS}, luego $v = v'$.
+
+\textbf{Caso SEQ1:}  
+\[
+t = \langle \textbf{skip}; c_1, \sigma \rangle, \quad v = \langle c_1, \sigma \rangle
+\]  
+Como esta derivación no tiene antecedente, y $t$ tiene la forma $\langle \textbf{skip}; c_1 \rangle$, la única regla posible es \textsc{SEQ1}, luego $v = v'$.
+
+\textbf{Caso SEQ2:}  
+\[
+t = \langle c_0; c_1, \sigma \rangle, \quad v = \langle c_0'; c_1, \sigma' \rangle
+\]  
+Dado que $t$ tiene la forma $\langle c_0; c_1 \rangle$ y existe un antecedente determinista para $c_0 \to c_0'$, la única regla aplicable es \textsc{SEQ2}, luego $v = v'$.
+
+\textbf{Caso IF1:}  
+\[
+t = \langle \textbf{if } b \textbf{ then } c_0 \textbf{ else } c_1, \sigma \rangle, 
+\quad v = \langle c_0, \sigma' \rangle
+\]  
+Como $t$ comienza con un \textbf{if}, puede provenir de \textsc{IF1} o \textsc{IF2}.  
+Pero como $b$ es determinista, si $b \Downarrow \textbf{true}$ no puede evaluar a \textbf{false}. Por tanto, solo aplica \textsc{IF1} y $v = v'$.
+
+\textbf{Caso IF2:}  
+\[
+t = \langle \textbf{if } b \textbf{ then } c_0 \textbf{ else } c_1, \sigma \rangle, 
+\quad v = \langle c_1, \sigma' \rangle
+\]  
+Análogo al caso anterior: como $b$ es determinista, si $b \Downarrow \textbf{false}$ no puede evaluar a \textbf{true}, luego solo aplica \textsc{IF2} y $v = v'$.
+
+\textbf{Caso REPEAT:}  
+\[
+t = \langle \textbf{repeat } c \textbf{ until } b, \sigma \rangle, 
+\quad v = \langle c;\ \textbf{if } b \textbf{ then skip else repeat } c \textbf{ until } b, \sigma \rangle
+\]  
+Como $t$ tiene la forma $\langle \textbf{repeat } c \textbf{ until } b \rangle$, la única regla aplicable es \textsc{REPEAT}, luego $v = v'$.
+
+En todos los casos se cumple $v = v'$, por lo que la relación es determinista.
+\end{proof}
+
+
+\section*{Ejercicio 6}
+
+
+\text{A1:}
+\[
+\begin{adjustbox}{center,max width=\textwidth}
+
+  \infer[R1]
+  { \langle x = x+1; y = x, \sigma \rangle 
+      \leadsto^* 
+      \langle \text{Skip}; y = x, [\sigma|x : x_0 + 1] \rangle }
+  { 
+    \infer[SEQ2]
+    { \langle x = x+1; y = x, \sigma \rangle 
+        \leadsto
+        \langle \text{Skip}; y = x, [\sigma|x : x_0 + 1] \rangle }
+    { 
+      \infer[ASS]
+      { \langle x = x+1, \sigma \rangle 
+          \leadsto
+          \langle \text{Skip}, [\sigma|x : x_0 + 1] \rangle }
+      { 
+        \infer[PLUS]
+        { \langle x+1, \sigma \rangle 
+            \Downarrow_{exp} 
+            \langle x_0+1, \sigma \rangle }
+        { 
+          \infer[VAR]
+          { \langle x, \sigma \rangle 
+              \Downarrow_{exp} 
+              \langle x_0, \sigma \rangle }
+          { x \in dom(\sigma) } 
+          &
+          \infer[NVAL]
+          { \langle 1, \sigma \rangle 
+              \Downarrow_{exp} 
+              \langle 1, \sigma \rangle }
+          { }
+        }
+      }
+    }
+  }
+
+ \end{adjustbox}
+\]
+
+
+\text{A2:}
+\[
+\begin{adjustbox}{center,max width=\textwidth}
+  \infer[R1]
+  { \langle \text{Skip}; y = x, [\sigma|x : x_0 + 1] \rangle
+      \leadsto^* 
+      \langle y = x, [\sigma|x : x_0 + 1] \rangle }
+  {
+    \infer[SEQ1]
+    { \langle \text{Skip}; y = x, [\sigma|x : x_0 + 1] \rangle
+        \leadsto
+        \langle y = x, [\sigma|x : x_0 + 1] \rangle }
+    { }
+  }
+ \end{adjustbox}
+\]
+
+
+\text{A3:}
+\[
+\begin{adjustbox}{center,max width=\textwidth}
+
+
+\infer[R1]
+{\langle y = x, [\sigma|x : x_0 + 1] \rangle
+    \leadsto^*
+    \langle \text{Skip}, [\sigma|y = x_0 + 1 \wedge x : x_0 + 1] \rangle}
+{\infer[ASS]
+{ \langle y = x, [\sigma|x : x_0 + 1] \rangle
+    \leadsto
+    \langle \text{Skip}, [\sigma|y = x_0 + 1 \wedge x : x_0 + 1] \rangle}
+{\infer[VAR]
+          { \langle x, [\sigma | x : x_{0} + 1] \rangle 
+              \Downarrow_{exp} 
+              \langle x_0 + 1 ,[\sigma | x : x_{0} + 1] \rangle }
+          { x \in dom[\sigma | x : x_{0} + 1] }
+          }
+        }
+
+ \end{adjustbox}
+\]
+
+
+
+\text{A4:}
+\[
+\begin{adjustbox}{center,max width=\textwidth}
+
+\infer[R2]
+{\langle x = x+1; y = x, \sigma \rangle 
+      \leadsto^*
+      \langle \text{Skip}, [\sigma|y = x_0 + 1 \wedge x : x_0 + 1] \rangle}
+{
+\infer[R2]
+{\langle x = x+1; y = x, \sigma \rangle 
+      \leadsto^* 
+      \langle y = x, [\sigma|x : x_0 + 1] \rangle}
+{A1 & A2}
+& \qquad               A3
+}
+
+ \end{adjustbox}
+\]
+
+\[
+\begin{adjustbox}{center,max width=\textwidth}
+
+
+
+\infer[R1]
+{\langle y = x++, \sigma \rangle
+\leadsto^*
+\langle \text{Skip}, [\sigma | y = x_0 + 1 \wedge x = x_0 + 1] \rangle}
+{\infer[ASS]
+{\langle y = x++, \sigma \rangle
+\leadsto
+\langle \text{Skip}, [\sigma | y = x_0 + 1 \wedge x = x_0 + 1] \rangle}
+{\infer[VARINC]
+{\langle x++, \sigma \rangle
+\Downarrow_{exp}
+\langle x_0 +1, [\sigma | x = x_0 + 1] \rangle}
+{\infer[VAR]
+{\langle x, \sigma \rangle
+\Downarrow_{exp}
+\langle x_0, \sigma \rangle}
+{x \in Dom  (\sigma)}}}}
+
+
+
+
+ \end{adjustbox}
+\]
+
+
+\end{document}

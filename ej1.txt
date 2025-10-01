@@ -19,9 +19,6 @@ comm ::= skip
         | if boolexp then comm else comm
         | repeat comm until boolexp
 
-
-
-
 digit ::= ’0’ | ’1’ | · · · | ’9’
 
 letter ::= ’a’ | · · · | ’Z’
